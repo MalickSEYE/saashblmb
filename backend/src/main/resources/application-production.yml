@@ -1,48 +1,68 @@
 # backend/src/main/resources/application-production.yml
-# Profil Spring activé sur Render (SPRING_PROFILES_ACTIVE=production)
 
 spring:
   datasource:
-    # Render injecte SPRING_DATASOURCE_URL directement (format jdbc:postgresql://...)
+    # Ces variables sont construites par start.sh depuis DATABASE_URL de Render
     url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME:mouride}
+    username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
+      maximum-pool-size: 3       # Plan gratuit Render : limiter les connexions
       minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      # Render ferme les connexions inactives — reconnecter automatiquement
+      keepalive-time: 30000
+      connection-test-query: SELECT 1
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
   flyway:
     enabled: true
     validate-on-migrate: true
+    # Réessayer si la DB n'est pas encore prête
+    connect-retries: 10
+    connect-retries-interval: 5
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      # Le mot de passe Redis doit être ajouté manuellement dans le dashboard Render
-      # Settings → Environment → Add REDIS_PASSWORD
       password: ${REDIS_PASSWORD:}
       timeout: 3000ms
+      connect-timeout: 3000ms
+  # Désactiver RabbitMQ en production (pas configuré sur Render)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
 
 server:
   port: ${PORT:8080}
   forward-headers-strategy: native
   tomcat:
-    max-threads: 20
+    max-threads: 10
+    min-spare-threads: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 logging:
   level:
     root: WARN
     com.mouride: INFO
     org.flywaydb: INFO
-
-springdoc:
-  swagger-ui:
-    enabled: true
-  api-docs:
-    enabled: true
+    org.springframework.web: WARN
