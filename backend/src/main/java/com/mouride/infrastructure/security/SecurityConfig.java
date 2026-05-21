@@ -1,9 +1,10 @@
 package com.mouride.infrastructure.security;
 
 import com.mouride.domain.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -29,18 +30,23 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter;
-    private final UserRepository userRepository;
+    // @Lazy brise la dépendance circulaire :
+    // JwtAuthFilter → UserDetailsService (SecurityConfig)
+    // SecurityConfig → JwtAuthFilter
+    @Lazy
+    @Autowired
+    private JwtAuthFilter jwtAuthFilter;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private static final String[] PUBLIC_ENDPOINTS = {
         "/api/v1/auth/**",
         "/swagger-ui/**", "/swagger-ui.html",
         "/api-docs/**",
         "/actuator/health",
-        "/api/v1/contenus/public/**",
         "/api/v1/dashboard/health"
     };
 
