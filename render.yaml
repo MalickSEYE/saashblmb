@@ -1,4 +1,4 @@
-# render.yaml — Mouride SaaS Platform (v3 — corrigé)
+# render.yaml — Mouride SaaS Platform
 
 services:
 
@@ -11,21 +11,7 @@ services:
     region: frankfurt
     healthCheckPath: /actuator/health
     envVars:
-      # Render fournit DATABASE_URL au format postgres://user:pass@host/db
-      # Spring Boot a besoin du format jdbc:postgresql://...
-      # On utilise une variable intermédiaire et on la transforme dans le Dockerfile
-      - key: DATABASE_URL
-        fromDatabase:
-          name: mouride-db
-          property: connectionString
-      - key: DB_USER
-        fromDatabase:
-          name: mouride-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: mouride-db
-          property: password
+      # Variables séparées pour la DB (plus fiables que DATABASE_URL)
       - key: DB_HOST
         fromDatabase:
           name: mouride-db
@@ -38,22 +24,25 @@ services:
         fromDatabase:
           name: mouride-db
           property: database
-      - key: REDIS_HOST
-        fromService:
-          name: mouride-redis
-          type: redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          name: mouride-redis
-          type: redis
-          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: mouride-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: mouride-db
+          property: password
+      # Aussi DATABASE_URL en fallback
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mouride-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: SPRING_PROFILES_ACTIVE
         value: production
       - key: JAVA_OPTS
-        value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -Xss256k -Djava.security.egd=file:/dev/./urandom"
+        value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
 
   - type: redis
     name: mouride-redis

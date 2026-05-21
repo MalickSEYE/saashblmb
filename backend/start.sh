@@ -2,24 +2,35 @@
 set -e
 
 echo "==> PORT=$PORT"
-echo "==> DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo YES || echo NO)"
-echo "==> REDIS_HOST=$REDIS_HOST"
-echo "==> SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE"
+echo "==> DB_HOST=$DB_HOST"
+echo "==> DB_PORT=$DB_PORT"
+echo "==> DB_NAME=$DB_NAME"
+echo "==> DB_USER=$DB_USER"
 
-if [ -n "$DATABASE_URL" ]; then
-  WITHOUT_PROTO=$(echo "$DATABASE_URL" | sed 's|postgres://||')
-  USERPASS=$(echo "$WITHOUT_PROTO" | cut -d@ -f1)
-  HOSTPORTDB=$(echo "$WITHOUT_PROTO" | cut -d@ -f2)
-  DB_USER_EXTRACTED=$(echo "$USERPASS" | cut -d: -f1)
-  DB_PASS_EXTRACTED=$(echo "$USERPASS" | cut -d: -f2)
-  export SPRING_DATASOURCE_URL="jdbc:postgresql://${HOSTPORTDB}"
-  export SPRING_DATASOURCE_USERNAME="$DB_USER_EXTRACTED"
-  export SPRING_DATASOURCE_PASSWORD="$DB_PASS_EXTRACTED"
-  echo "==> SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL"
+# Construire l'URL JDBC depuis les variables séparées injectées par render.yaml
+# (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
+if [ -n "$DB_HOST" ] && [ -n "$DB_NAME" ]; then
+  export SPRING_DATASOURCE_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+  export SPRING_DATASOURCE_USERNAME="${DB_USER}"
+  export SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}"
+  echo "==> JDBC URL: jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+elif [ -n "$DATABASE_URL" ]; then
+  # Fallback: parser DATABASE_URL manuellement
+  # Format: postgres://user:pass@host:port/db
+  TMPURL=$(echo "$DATABASE_URL" | sed 's|postgres://||' | sed 's|postgresql://||')
+  USERPASS=$(echo "$TMPURL" | sed 's/@.*//')
+  HOSTPART=$(echo "$TMPURL" | sed 's/.*@//')
+  export SPRING_DATASOURCE_URL="jdbc:postgresql://${HOSTPART}"
+  export SPRING_DATASOURCE_USERNAME=$(echo "$USERPASS" | cut -d: -f1)
+  export SPRING_DATASOURCE_PASSWORD=$(echo "$USERPASS" | cut -d: -f2-)
+  echo "==> JDBC URL (from DATABASE_URL): jdbc:postgresql://${HOSTPART}"
+else
+  echo "==> ERREUR: Aucune variable de base de données trouvée!"
+  exit 1
 fi
 
 APP_PORT=${PORT:-8080}
-echo "==> Starting on port $APP_PORT"
+echo "==> Démarrage sur port $APP_PORT"
 
 exec java \
   -XX:+UseContainerSupport \
@@ -27,8 +38,4 @@ exec java \
   -Xss256k \
   -Djava.security.egd=file:/dev/./urandom \
   -Dserver.port=$APP_PORT \
-  -Dlogging.level.root=INFO \
-  -Dlogging.level.com.mouride=DEBUG \
-  -Dlogging.level.org.flywaydb=DEBUG \
-  -Dlogging.level.org.springframework.boot.autoconfigure=DEBUG \
-  -jar /app/app.jar 2>&1
+  -jar /app/app.jar
