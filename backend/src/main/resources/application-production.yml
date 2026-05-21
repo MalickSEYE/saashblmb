@@ -1,35 +1,21 @@
-# backend/src/main/resources/application-production.yml
-
 spring:
   datasource:
-    # Ces variables sont construites par start.sh depuis DATABASE_URL de Render
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 3       # Plan gratuit Render : limiter les connexions
+      maximum-pool-size: 3
       minimum-idle: 1
       connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      # Render ferme les connexions inactives — reconnecter automatiquement
       keepalive-time: 30000
       connection-test-query: SELECT 1
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          lob:
-            non_contextual_creation: true
   flyway:
     enabled: true
-    validate-on-migrate: true
-    # Réessayer si la DB n'est pas encore prête
     connect-retries: 10
     connect-retries-interval: 5
   data:
@@ -38,18 +24,12 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 3000ms
-      connect-timeout: 3000ms
-  # Désactiver RabbitMQ en production (pas configuré sur Render)
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
 
 server:
   port: ${PORT:8080}
   forward-headers-strategy: native
   tomcat:
     max-threads: 10
-    min-spare-threads: 2
 
 management:
   endpoints:
@@ -65,4 +45,3 @@ logging:
     root: WARN
     com.mouride: INFO
     org.flywaydb: INFO
-    org.springframework.web: WARN

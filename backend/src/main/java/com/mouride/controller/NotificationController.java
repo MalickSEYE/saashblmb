@@ -20,39 +20,37 @@ import java.util.UUID;
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Notifications", description = "Gestion des notifications")
+@Tag(name = "Notifications", description = "Gestion des notifications in-app")
 public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @PostMapping("/email")
+    @PostMapping("/in-app")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','RESPONSABLE')")
-    @Operation(summary = "Envoyer un email")
-    public ResponseEntity<Map<String, String>> envoyerEmail(@RequestBody Map<String, String> body) {
-        notificationService.envoyerEmail(
+    @Operation(summary = "Envoyer une notification in-app")
+    public ResponseEntity<Map<String, String>> envoyer(@RequestBody Map<String, String> body) {
+        notificationService.envoyerInApp(
             UUID.fromString(body.get("destinataireId")),
-            body.get("sujet"), body.get("message"));
+            body.get("sujet"),
+            body.get("message")
+        );
         return ResponseEntity.ok(Map.of("status", "envoyé"));
     }
 
-    @PostMapping("/diffusion")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
-    @Operation(summary = "Diffusion à tous les membres")
-    public ResponseEntity<Map<String, String>> diffuser(@RequestBody Map<String, String> body) {
-        Notification.Canal canal = Notification.Canal.valueOf(
-            body.getOrDefault("canal", "EMAIL"));
-        notificationService.diffuserATous(body.get("sujet"), body.get("message"), canal);
-        return ResponseEntity.ok(Map.of("status", "diffusé"));
-    }
-
     @GetMapping("/non-lues")
-    @Operation(summary = "Notifications non lues")
+    @Operation(summary = "Notifications non lues de l'utilisateur connecté")
     public ResponseEntity<List<Notification>> nonLues(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(notificationService.getNonLues(user.getId()));
     }
 
+    @GetMapping("/non-lues/count")
+    @Operation(summary = "Nombre de notifications non lues")
+    public ResponseEntity<Map<String, Long>> count(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(Map.of("count", notificationService.countNonLues(user.getId())));
+    }
+
     @PutMapping("/{id}/lire")
-    @Operation(summary = "Marquer comme lue")
+    @Operation(summary = "Marquer une notification comme lue")
     public ResponseEntity<Void> marquerLu(@PathVariable UUID id,
             @AuthenticationPrincipal User user) {
         notificationService.marquerLu(id, user.getId());
