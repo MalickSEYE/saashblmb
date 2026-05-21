@@ -57,6 +57,13 @@ public class Evenement {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) this.createdAt = java.time.LocalDateTime.now();
+        if (this.updatedAt == null) this.updatedAt = java.time.LocalDateTime.now();
+    }
+
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
 
