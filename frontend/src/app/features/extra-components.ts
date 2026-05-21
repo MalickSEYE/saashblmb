@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ApiService } from '../../core/services/services';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 // ── Finance Component ──────────────────────────────────────
 @Component({
@@ -12,14 +13,13 @@ import { ApiService } from '../../core/services/services';
       <div class="page-header">
         <div><h1>💰 Finance</h1><span class="subtitle">Tableau de bord financier</span></div>
         <div class="header-actions">
-          <a href="/api/v1/export/membres/excel" class="btn-secondary">📥 Export Excel</a>
-          <a href="/api/v1/export/finance/rapport" class="btn-primary">📄 Rapport PDF</a>
+          <a [href]="api + '/export/membres/excel'" class="btn-secondary">📥 Export CSV</a>
         </div>
       </div>
       <div class="finance-kpis" *ngIf="stats">
-        <div class="fk-card"><div class="fkv">{{ (stats.totalValide | number:'1.0-0') }}</div>
+        <div class="fk-card"><div class="fkv">{{ stats.totalValide | number:'1.0-0' }}</div>
           <div class="fkl">FCFA Total validé</div></div>
-        <div class="fk-card accent"><div class="fkv">{{ (stats.totalCeMois | number:'1.0-0') }}</div>
+        <div class="fk-card accent"><div class="fkv">{{ stats.totalCeMois | number:'1.0-0' }}</div>
           <div class="fkl">FCFA ce mois</div></div>
         <div class="fk-card warn"><div class="fkv">{{ stats.nbEnAttente }}</div>
           <div class="fkl">Paiements en attente</div></div>
@@ -27,10 +27,6 @@ import { ApiService } from '../../core/services/services';
           <div class="fkl">Rejetés</div></div>
       </div>
       <div *ngIf="!stats" class="loading">Chargement des données financières...</div>
-      <div class="info-box">
-        <p>📊 Les graphiques et analyses détaillées (Chart.js) sont disponibles dans la version complète.</p>
-        <p>Utilisez les exports Excel/PDF pour obtenir les rapports détaillés.</p>
-      </div>
     </div>
   `,
   styles: [`
@@ -39,12 +35,9 @@ import { ApiService } from '../../core/services/services';
     h1 { font-size: 1.6rem; font-weight: 700; color: #1A4731; margin: 0; }
     .subtitle { color: #888; font-size: 0.9rem; }
     .header-actions { display: flex; gap: 0.75rem; }
-    .btn-primary { padding: 0.6rem 1.25rem; background: #1A4731; color: #F0C96B; border: none;
-                   border-radius: 8px; text-decoration: none; font-size: 0.88rem; font-weight: 600; }
     .btn-secondary { padding: 0.6rem 1.25rem; background: #f5f2ec; color: #1A4731; border: 1px solid #ddd;
                      border-radius: 8px; text-decoration: none; font-size: 0.88rem; }
-    .finance-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 1.25rem; margin-bottom: 2rem; }
+    .finance-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
     .fk-card { background: white; border-radius: 14px; padding: 1.5rem;
                box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-top: 4px solid #1A4731; }
     .fk-card.accent { border-top-color: #C8952A; }
@@ -53,14 +46,15 @@ import { ApiService } from '../../core/services/services';
     .fkv { font-size: 1.8rem; font-weight: 700; color: #1C1712; }
     .fkl { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
     .loading { padding: 3rem; text-align: center; color: #888; }
-    .info-box { background: #e8f4ea; border-radius: 12px; padding: 1.5rem; color: #1A4731; }
-    .info-box p { margin: 0.4rem 0; }
   `]
 })
 export class FinanceComponent implements OnInit {
-  private api = inject(ApiService);
+  private http = inject(HttpClient);
+  api = environment.apiUrl;
   stats: any = null;
-  ngOnInit() { this.api.getCotisationsStats().subscribe({ next: s => this.stats = s }); }
+  ngOnInit() {
+    this.http.get<any>(`${this.api}/cotisations/stats`).subscribe({ next: s => this.stats = s });
+  }
 }
 
 // ── Contenus Component ─────────────────────────────────────
@@ -88,13 +82,9 @@ export class FinanceComponent implements OnInit {
           </div>
           <h3>{{ c.titre }}</h3>
           <p *ngIf="c.auteur" class="cc-auteur">Par {{ c.auteur }}</p>
-          <p *ngIf="c.description" class="cc-desc">{{ c.description | slice:0:120 }}</p>
-          <div class="cc-footer">
-            <span>👁 {{ c.nbVues || 0 }} vues</span>
-            <span *ngIf="c.dureeSecondes">⏱ {{ c.dureeSecondes | number }} s</span>
-          </div>
+          <div class="cc-footer"><span>👁 {{ c.nbVues || 0 }} vues</span></div>
         </div>
-        <div *ngIf="contenus.length === 0" class="empty">📖 Aucun contenu publié pour l'instant.</div>
+        <div *ngIf="contenus.length === 0" class="empty">📖 Aucun contenu publié.</div>
       </div>
     </div>
   `,
@@ -111,21 +101,18 @@ export class FinanceComponent implements OnInit {
     .ct-icon { font-size: 1.2rem; }
     .ct-label { font-size: 0.85rem; font-weight: 600; color: #333; }
     .contenus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
-    .contenu-card { background: white; border-radius: 14px; padding: 1.25rem;
-                    box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .contenu-card { background: white; border-radius: 14px; padding: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
     .cc-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
-    .cc-type { background: #FDF3DC; color: #8B6914; font-size: 0.72rem; font-weight: 700;
-               padding: 0.15rem 0.5rem; border-radius: 4px; }
+    .cc-type { background: #FDF3DC; color: #8B6914; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; }
     .cc-lang { color: #888; font-size: 0.75rem; }
     h3 { font-size: 0.95rem; font-weight: 700; color: #1A4731; margin-bottom: 0.4rem; }
     .cc-auteur { font-size: 0.8rem; color: #C8952A; margin-bottom: 0.4rem; }
-    .cc-desc { font-size: 0.82rem; color: #666; }
     .cc-footer { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.78rem; color: #aaa; }
     .loading, .empty { padding: 3rem; text-align: center; color: #888; }
   `]
 })
 export class ContenusListComponent implements OnInit {
-  private api = inject(ApiService);
+  private http = inject(HttpClient);
   contenus: any[] = [];
   loading = true;
   typeFilter = '';
@@ -140,9 +127,10 @@ export class ContenusListComponent implements OnInit {
   ];
   ngOnInit() { this.filtrer(''); }
   filtrer(type: string) {
-    this.typeFilter = type; this.loading = true;
-    const url = `/api/v1/contenus/public${type ? '?type=' + type : ''}`;
-    this.api['http'].get<any>(url).subscribe({
+    this.typeFilter = type;
+    this.loading = true;
+    const url = `${environment.apiUrl}/contenus/public${type ? '?type=' + type : ''}`;
+    this.http.get<any>(url).subscribe({
       next: d => { this.contenus = d.content || []; this.loading = false; },
       error: () => this.loading = false
     });
@@ -162,25 +150,16 @@ export class ContenusListComponent implements OnInit {
       <div *ngIf="loading" class="loading">Chargement...</div>
       <div class="projets-grid" *ngIf="!loading">
         <div class="projet-card" *ngFor="let p of projets">
-          <div class="pp-header">
-            <span class="pp-statut" [class]="'st-' + p.statut">{{ p.statut }}</span>
-          </div>
+          <div class="pp-header"><span class="pp-statut">{{ p.statut }}</span></div>
           <h3>{{ p.titre }}</h3>
-          <p class="pp-desc" *ngIf="p.description">{{ p.description | slice:0:150 }}</p>
+          <p class="pp-desc" *ngIf="p.description">{{ p.description }}</p>
           <div class="pp-progress" *ngIf="p.budgetCible > 0">
             <div class="progress-bar">
-              <div class="progress-fill"
-                   [style.width.%]="(p.montantCollecte / p.budgetCible) * 100 | number:'1.0-0'"></div>
-            </div>
-            <div class="progress-labels">
-              <span>{{ (p.montantCollecte | number:'1.0-0') }} FCFA collectés</span>
-              <span>/ {{ (p.budgetCible | number:'1.0-0') }} FCFA</span>
+              <div class="progress-fill" [style.width.%]="(p.montantCollecte / p.budgetCible) * 100"></div>
             </div>
           </div>
         </div>
-        <div *ngIf="projets.length === 0" class="empty">
-          🤝 Aucun projet social en cours.
-        </div>
+        <div *ngIf="projets.length === 0" class="empty">🤝 Aucun projet en cours.</div>
       </div>
     </div>
   `,
@@ -190,27 +169,21 @@ export class ContenusListComponent implements OnInit {
     h1 { font-size: 1.6rem; font-weight: 700; color: #1A4731; margin: 0; }
     .subtitle { color: #888; font-size: 0.9rem; }
     .projets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
-    .projet-card { background: white; border-radius: 16px; padding: 1.5rem;
-                   box-shadow: 0 2px 16px rgba(0,0,0,0.08); border-top: 4px solid #1A4731; }
-    .pp-header { margin-bottom: 0.75rem; }
-    .pp-statut { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
-    .st-EN_COURS { background: #e8f4ea; color: #1A4731; }
-    .st-PLANIFIE { background: #fff3cd; color: #856404; }
-    .st-TERMINE  { background: #e9e9e9; color: #555; }
-    h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin-bottom: 0.5rem; }
-    .pp-desc { font-size: 0.85rem; color: #666; margin-bottom: 1rem; }
-    .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-bottom: 0.4rem; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, #1A4731, #C8952A); border-radius: 4px; transition: width 0.5s; }
-    .progress-labels { display: flex; justify-content: space-between; font-size: 0.78rem; color: #888; }
+    .projet-card { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 16px rgba(0,0,0,0.08); border-top: 4px solid #1A4731; }
+    .pp-statut { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; background: #e8f4ea; color: #1A4731; }
+    h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin: 0.75rem 0 0.5rem; }
+    .pp-desc { font-size: 0.85rem; color: #666; }
+    .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-top: 1rem; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #1A4731, #C8952A); border-radius: 4px; }
     .loading, .empty { padding: 3rem; text-align: center; color: #888; }
   `]
 })
 export class ProjetsListComponent implements OnInit {
-  private api = inject(ApiService);
+  private http = inject(HttpClient);
   projets: any[] = [];
   loading = true;
   ngOnInit() {
-    this.api['http'].get<any>('/api/v1/projets').subscribe({
+    this.http.get<any>(`${environment.apiUrl}/projets`).subscribe({
       next: d => { this.projets = d.content || []; this.loading = false; },
       error: () => this.loading = false
     });
@@ -243,25 +216,20 @@ export class ProjetsListComponent implements OnInit {
     h1 { font-size: 1.6rem; font-weight: 700; color: #1A4731; margin: 0; }
     .subtitle { color: #888; font-size: 0.9rem; }
     .canaux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
-    .canal-card { background: white; border-radius: 16px; padding: 1.5rem; text-align: center;
-                  box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .canal-card { background: white; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
     .canal-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
     h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin-bottom: 0.5rem; }
     p { font-size: 0.85rem; color: #666; margin-bottom: 1rem; }
-    .btn-primary { padding: 0.55rem 1.25rem; background: #1A4731; color: #F0C96B;
-                   border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .btn-primary { padding: 0.55rem 1.25rem; background: #1A4731; color: #F0C96B; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
   `]
 })
 export class CommunicationComponent {
   canaux = [
-    { icon: '📧', titre: 'Email', desc: 'Envoi d\'emails individuels ou en masse' },
-    { icon: '💬', titre: 'SMS', desc: 'Notifications par SMS via Twilio' },
-    { icon: '📱', titre: 'WhatsApp', desc: 'Messages via WhatsApp Business API' },
-    { icon: '🔔', titre: 'Notification App', desc: 'Notifications in-app en temps réel' },
-    { icon: '📣', titre: 'Annonce globale', desc: 'Diffusion à tous les membres' },
+    { icon: '🔔', titre: 'Notification in-app', desc: 'Notifications en temps réel dans l\'application' },
+    { icon: '📣', titre: 'Annonce globale', desc: 'Diffusion à tous les membres connectés' },
     { icon: '📆', titre: 'Rappel événement', desc: 'Rappels automatiques d\'événements' },
   ];
-  ouvrir(c: any) { alert('Module ' + c.titre + ' — Interface de composition à implémenter'); }
+  ouvrir(c: any) { alert('Module ' + c.titre + ' — À configurer'); }
 }
 
 // ── Admin Component ────────────────────────────────────────
@@ -272,16 +240,12 @@ export class CommunicationComponent {
   template: `
     <div class="page">
       <div class="page-header">
-        <div><h1>⚙️ Administration</h1><span class="subtitle">Gestion système et utilisateurs</span></div>
+        <div><h1>⚙️ Administration</h1><span class="subtitle">Gestion système</span></div>
       </div>
       <div class="admin-sections">
         <div class="admin-card" *ngFor="let s of sections">
           <div class="admin-icon">{{ s.icon }}</div>
-          <div class="admin-body">
-            <h3>{{ s.titre }}</h3>
-            <p>{{ s.desc }}</p>
-          </div>
-          <button class="btn-primary" (click)="naviguer(s)">Gérer →</button>
+          <div class="admin-body"><h3>{{ s.titre }}</h3><p>{{ s.desc }}</p></div>
         </div>
       </div>
     </div>
@@ -292,25 +256,18 @@ export class CommunicationComponent {
     h1 { font-size: 1.6rem; font-weight: 700; color: #1A4731; margin: 0; }
     .subtitle { color: #888; font-size: 0.9rem; }
     .admin-sections { display: flex; flex-direction: column; gap: 1rem; }
-    .admin-card { background: white; border-radius: 14px; padding: 1.25rem;
-                  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-                  display: flex; align-items: center; gap: 1rem; }
+    .admin-card { background: white; border-radius: 14px; padding: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,0.07); display: flex; align-items: center; gap: 1rem; }
     .admin-icon { font-size: 2rem; width: 50px; text-align: center; flex-shrink: 0; }
     .admin-body { flex: 1; }
     h3 { font-size: 0.95rem; font-weight: 700; color: #1A4731; margin: 0 0 0.25rem; }
     p { font-size: 0.85rem; color: #888; margin: 0; }
-    .btn-primary { padding: 0.5rem 1rem; background: #1A4731; color: #F0C96B;
-                   border: none; border-radius: 8px; cursor: pointer; white-space: nowrap; }
   `]
 })
 export class AdminComponent {
   sections = [
-    { icon: '👤', titre: 'Gestion des utilisateurs', desc: 'Créer, modifier, activer ou désactiver des comptes utilisateurs' },
-    { icon: '🔑', titre: 'Rôles et permissions', desc: 'Configurer les accès par rôle : Super Admin, Admin, Responsable, Membre' },
-    { icon: '📋', titre: 'Journaux d\'audit', desc: 'Traçabilité complète de toutes les actions effectuées sur la plateforme' },
-    { icon: '⚙️', titre: 'Configuration système', desc: 'Paramètres généraux, intégrations API, options de notifications' },
-    { icon: '🗄️', titre: 'Sauvegarde & Restauration', desc: 'Gestion des sauvegardes PostgreSQL et restauration des données' },
-    { icon: '📊', titre: 'Logs & Monitoring', desc: 'Supervision des performances, erreurs et métriques système' },
+    { icon: '👤', titre: 'Utilisateurs', desc: 'Créer et gérer les comptes utilisateurs' },
+    { icon: '🔑', titre: 'Rôles', desc: 'Configurer les accès par rôle' },
+    { icon: '📋', titre: 'Audit logs', desc: 'Traçabilité des actions' },
+    { icon: '⚙️', titre: 'Configuration', desc: 'Paramètres système' },
   ];
-  naviguer(s: any) { alert(s.titre + ' — Interface à implémenter'); }
 }
