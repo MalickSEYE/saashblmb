@@ -1,18 +1,12 @@
 package com.mouride.infrastructure.security;
 
 import com.mouride.domain.repository.UserRepository;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -20,61 +14,18 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.util.List;
 
-// ── JWT Filter ──────────────────────────────────────────────
-@Component
-@RequiredArgsConstructor
-@Slf4j
-class JwtAuthFilter extends OncePerRequestFilter {
-
-    private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
-            chain.doFilter(request, response);
-            return;
-        }
-        String token = authHeader.substring(7);
-        try {
-            String username = jwtService.extractUsername(token);
-            if (StringUtils.hasText(username) &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
-                var userDetails = userDetailsService.loadUserByUsername(username);
-                if (jwtService.isTokenValid(token, (com.mouride.domain.model.User) userDetails)) {
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("JWT filter error: {}", e.getMessage());
-        }
-        chain.doFilter(request, response);
-    }
-}
-
-// ── Security Configuration ──────────────────────────────────
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -90,7 +41,7 @@ public class SecurityConfig {
         "/api-docs/**",
         "/actuator/health",
         "/api/v1/contenus/public/**",
-        "/api/v1/annonces/public/**"
+        "/api/v1/dashboard/health"
     };
 
     @Bean
