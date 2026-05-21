@@ -11,10 +11,11 @@
       "destination": "https://mouride-backend.onrender.com/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
-  ],
+  ]
+,
   "headers": [
     {
       "source": "/api/(.*)",
