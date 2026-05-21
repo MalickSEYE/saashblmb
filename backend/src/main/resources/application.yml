@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: mouride-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://db:5432/mouride}
+    username: ${DB_USER:mouride}
+    password: ${DB_PASSWORD:mouride}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+
+# JWT
+mouride:
+  jwt:
+    secret: ${JWT_SECRET:mouride-secret-key-change-in-production-min-256-bits-required}
+    expiration: 3600000        # 1 heure
+    refresh-expiration: 604800000  # 7 jours
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket-name: mouride-files
+  wave:
+    api-key: ${WAVE_API_KEY:}
+    api-url: https://api.wave.com/v1
+  orange-money:
+    api-key: ${ORANGE_MONEY_API_KEY:}
+    api-url: https://api.orange.com/orange-money-webpay/dev/v1
+
+# SpringDoc / Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.mouride: DEBUG
+    org.springframework.security: WARN

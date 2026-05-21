@@ -1,0 +1,35 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Java / Maven
+backend/target/
+backend/*.jar
+*.class
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+**/*.log
+backups/
+
+# Test reports
+backend/surefire-reports/
+frontend/coverage/
