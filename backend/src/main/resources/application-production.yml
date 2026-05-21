@@ -1,23 +1,21 @@
 # backend/src/main/resources/application-production.yml
-# Profil Spring activé sur Render.com (SPRING_PROFILES_ACTIVE=production)
+# Profil Spring activé sur Render (SPRING_PROFILES_ACTIVE=production)
 
 spring:
   datasource:
-    # Render injecte une URL complète de type :
-    # postgresql://user:password@host:5432/dbname
-    # Spring la convertit automatiquement si on utilise DATABASE_URL
-    url: ${DB_URL}
-    username: ${DB_USER:mouride}
-    password: ${DB_PASSWORD}
+    # Render injecte SPRING_DATASOURCE_URL directement (format jdbc:postgresql://...)
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME:mouride}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
-      maximum-pool-size: 5        # Limité sur le plan gratuit Render
+      maximum-pool-size: 5
       minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
   jpa:
     hibernate:
-      ddl-auto: validate          # Flyway gère les migrations, pas Hibernate
+      ddl-auto: validate
     show-sql: false
   flyway:
     enabled: true
@@ -26,27 +24,25 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      # Le mot de passe Redis doit être ajouté manuellement dans le dashboard Render
+      # Settings → Environment → Add REDIS_PASSWORD
       password: ${REDIS_PASSWORD:}
-      ssl:
-        enabled: false
       timeout: 3000ms
 
 server:
-  port: ${PORT:8080}             # Render injecte la variable PORT automatiquement
+  port: ${PORT:8080}
   forward-headers-strategy: native
   tomcat:
-    max-threads: 20              # Limité pour optimiser la RAM
+    max-threads: 20
 
-# Logging réduit en production
 logging:
   level:
     root: WARN
     com.mouride: INFO
     org.flywaydb: INFO
 
-# Swagger désactivé en production (optionnel)
 springdoc:
   swagger-ui:
-    enabled: true               # Mettre false pour masquer la doc en prod
+    enabled: true
   api-docs:
     enabled: true

@@ -1,6 +1,5 @@
 # render.yaml — Mouride SaaS Platform
 # Déposer ce fichier à la RACINE du dépôt GitHub
-# Render le détecte automatiquement et crée tous les services
 
 services:
 
@@ -10,19 +9,19 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: free               # Gratuit : 512 MB RAM, spin-down après 15 min inactivité
-    region: frankfurt        # Choisir la région la plus proche de l'Afrique de l'Ouest
+    plan: free
+    region: frankfurt
     healthCheckPath: /actuator/health
     envVars:
-      - key: DB_URL
+      - key: SPRING_DATASOURCE_URL
         fromDatabase:
           name: mouride-db
           property: connectionString
-      - key: DB_USER
+      - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
           name: mouride-db
           property: user
-      - key: DB_PASSWORD
+      - key: SPRING_DATASOURCE_PASSWORD
         fromDatabase:
           name: mouride-db
           property: password
@@ -36,32 +35,30 @@ services:
           name: mouride-redis
           type: redis
           property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: mouride-redis
-          type: redis
-          property: password
+      # REDIS_PASSWORD : à renseigner manuellement dans le dashboard Render
+      # (Render ne permet pas d'exposer le password Redis via fromService)
       - key: JWT_SECRET
-        generateValue: true    # Render génère automatiquement une valeur sécurisée
-      - key: RABBITMQ_HOST
-        value: ""              # Optionnel : utiliser CloudAMQP (plan gratuit 1M msg/mois)
+        generateValue: true
       - key: SPRING_PROFILES_ACTIVE
         value: production
       - key: JAVA_OPTS
         value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xss256k"
+      - key: RABBITMQ_HOST
+        value: ""
 
   # ── Redis ─────────────────────────────────────────────────
   - type: redis
     name: mouride-redis
-    plan: free               # Gratuit : 25 MB RAM
+    plan: free
     region: frankfurt
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []            # [] = accès uniquement depuis les services Render (recommandé)
 
 databases:
 
   # ── PostgreSQL ────────────────────────────────────────────
   - name: mouride-db
-    plan: free               # Gratuit : 1 GB stockage, expire après 30 jours
+    plan: free
     region: frankfurt
     postgresMajorVersion: 15
     databaseName: mouride
