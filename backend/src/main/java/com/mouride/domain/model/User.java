@@ -27,7 +27,7 @@ public class User implements UserDetails {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "user_role")
+    @Column(length = 50)
     private Role role = Role.MEMBRE;
 
     @Column(name = "is_active")

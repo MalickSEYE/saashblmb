@@ -35,7 +35,7 @@ public class ProjetSocial {
     private LocalDate dateFin;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "projet_statut", nullable = false)
+    @Column(length = 50, nullable = false)
     private Statut statut = Statut.PLANIFIE;
 
     @Column(name = "image_url")

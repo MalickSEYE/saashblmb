@@ -35,7 +35,7 @@ public class Membre {
     private LocalDate dateNaissance;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "membre_sexe")
+    @Column(length = 20)
     private Sexe sexe;
 
     private String ville;
@@ -49,7 +49,7 @@ public class Membre {
     private UUID dahiraId;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "membre_statut", nullable = false)
+    @Column(length = 50, nullable = false)
     private Statut statut = Statut.EN_ATTENTE;
 
     @Column(name = "photo_url")

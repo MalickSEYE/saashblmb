@@ -22,7 +22,7 @@ public class Notification {
     private User destinataire;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "notif_canal", nullable = false)
+    @Column(length = 50, nullable = false)
     private Canal canal = Canal.IN_APP;
 
     private String sujet;
@@ -31,7 +31,7 @@ public class Notification {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "notif_statut", nullable = false)
+    @Column(length = 50, nullable = false)
     private Statut statut = Statut.EN_ATTENTE;
 
     private boolean lu = false;

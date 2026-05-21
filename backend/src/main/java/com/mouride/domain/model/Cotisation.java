@@ -25,17 +25,17 @@ public class Cotisation {
     private BigDecimal montant;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "cotisation_type", nullable = false)
+    @Column(length = 50, nullable = false)
     private Type type = Type.MENSUELLE;
 
     private String periode; // YYYY-MM
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "cotisation_statut", nullable = false)
+    @Column(length = 50, nullable = false)
     private Statut statut = Statut.EN_ATTENTE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "moyen_paiement", columnDefinition = "paiement_moyen", nullable = false)
+    @Column(name = "moyen_paiement", length = 50, nullable = false)
     private MoyenPaiement moyenPaiement = MoyenPaiement.MANUEL;
 
     @Column(name = "reference_paiement")

@@ -19,7 +19,7 @@ public class Evenement {
     private String titre;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "evenement_type", nullable = false)
+    @Column(length = 50, nullable = false)
     private Type type = Type.REUNION;
 
     private String description;
@@ -48,7 +48,7 @@ public class Evenement {
     private UUID dahiraId;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "evenement_statut", nullable = false)
+    @Column(length = 50, nullable = false)
     private Statut statut = Statut.PLANIFIE;
 
     @Column(name = "created_at")
