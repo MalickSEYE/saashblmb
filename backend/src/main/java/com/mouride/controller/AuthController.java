@@ -18,12 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Authentification", description = "Connexion, inscription, gestion des tokens")
+@Tag(name = "Authentification")
 public class AuthController {
 
     private final AuthenticationManager authManager;
@@ -41,8 +42,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Email ou mot de passe incorrect"));
         }
-        User user = userRepository.findByEmail(request.getEmail())
-            .orElseThrow();
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
         if (!user.isActive()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("message", "Compte désactivé"));
@@ -59,32 +59,39 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Inscription d'un nouveau membre")
+    @Operation(summary = "Inscription")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest()
                 .body(Map.of("message", "Cet email est déjà utilisé"));
         }
+        // Premier compte = SUPER_ADMIN, les suivants = MEMBRE
+        long count = userRepository.count();
+        User.Role role = count == 0 ? User.Role.SUPER_ADMIN : User.Role.MEMBRE;
+
         User user = User.builder()
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(User.Role.MEMBRE)
-            .active(false) // Activation par admin
+            .role(role)
+            .active(true) // Auto-activation pour le MVP
             .build();
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(Map.of("message", "Compte créé. En attente d'activation par un administrateur."));
+
+        String msg = count == 0
+            ? "Compte Super Admin créé avec succès."
+            : "Compte créé. En attente d'activation par un administrateur.";
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("message", msg));
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Renouvellement du token d'accès")
+    @Operation(summary = "Renouvellement du token")
     public ResponseEntity<?> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         try {
             String email = jwtService.extractUsername(request.getRefreshToken());
             User user = userRepository.findByEmail(email).orElseThrow();
             if (!jwtService.isTokenValid(request.getRefreshToken(), user)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Token de rafraîchissement invalide"));
+                    .body(Map.of("message", "Token invalide"));
             }
             return ResponseEntity.ok(Map.of(
                 "accessToken", jwtService.generateToken(user),
@@ -98,14 +105,25 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Demande de réinitialisation de mot de passe")
+    @Operation(summary = "Réinitialisation mot de passe")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        // En production : envoyer un email avec token temporaire
-        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
-            log.info("Demande réinitialisation pour : {}", user.getEmail());
-            // TODO: générer token, envoyer email
-        });
         return ResponseEntity.ok(Map.of("message",
             "Si cet email existe, un lien de réinitialisation a été envoyé."));
+    }
+
+    // Endpoint temporaire pour promouvoir un compte en SUPER_ADMIN
+    // À supprimer après la première utilisation !
+    @PostMapping("/setup/{email}")
+    @Operation(summary = "Promouvoir un compte en SUPER_ADMIN (setup initial uniquement)")
+    public ResponseEntity<?> setup(@PathVariable String email) {
+        return userRepository.findByEmail(email).map(user -> {
+            user.setRole(User.Role.SUPER_ADMIN);
+            user.setActive(true);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of(
+                "message", "Compte promu SUPER_ADMIN",
+                "email", email
+            ));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }
