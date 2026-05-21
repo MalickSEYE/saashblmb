@@ -3,7 +3,7 @@
   "name": "mouride-saas-frontend",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/mouride-frontend/browser",
-  "installCommand": "npm ci",
+  "installCommand": "npm install",
   "framework": null,
   "rewrites": [
     {
