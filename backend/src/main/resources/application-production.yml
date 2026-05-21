@@ -23,12 +23,11 @@ spring:
     out-of-order: true
     connect-retries: 10
     connect-retries-interval: 5
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 3000ms
+  # Désactiver Redis auto-configuration - pas critique pour le MVP
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 server:
   port: ${PORT:8080}
@@ -47,6 +46,7 @@ management:
 
 logging:
   level:
-    root: WARN
-    com.mouride: INFO
+    root: INFO
+    com.mouride: DEBUG
     org.flywaydb: INFO
+    org.springframework.web: WARN
