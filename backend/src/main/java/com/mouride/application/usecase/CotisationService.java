@@ -2,6 +2,7 @@ package com.mouride.application.usecase;
 
 import com.mouride.application.dto.CotisationDtos.*;
 import com.mouride.domain.model.Cotisation;
+import com.mouride.domain.model.Dahira;
 import com.mouride.domain.repository.CotisationRepository;
 import com.mouride.domain.repository.DahiraRepository;
 import com.mouride.domain.repository.MembreRepository;
