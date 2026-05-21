@@ -1,0 +1,68 @@
+# render.yaml — Mouride SaaS Platform
+# Déposer ce fichier à la RACINE du dépôt GitHub
+# Render le détecte automatiquement et crée tous les services
+
+services:
+
+  # ── Backend Spring Boot ───────────────────────────────────
+  - type: web
+    name: mouride-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free               # Gratuit : 512 MB RAM, spin-down après 15 min inactivité
+    region: frankfurt        # Choisir la région la plus proche de l'Afrique de l'Ouest
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        fromDatabase:
+          name: mouride-db
+          property: connectionString
+      - key: DB_USER
+        fromDatabase:
+          name: mouride-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: mouride-db
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          name: mouride-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: mouride-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: mouride-redis
+          type: redis
+          property: password
+      - key: JWT_SECRET
+        generateValue: true    # Render génère automatiquement une valeur sécurisée
+      - key: RABBITMQ_HOST
+        value: ""              # Optionnel : utiliser CloudAMQP (plan gratuit 1M msg/mois)
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: JAVA_OPTS
+        value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Xss256k"
+
+  # ── Redis ─────────────────────────────────────────────────
+  - type: redis
+    name: mouride-redis
+    plan: free               # Gratuit : 25 MB RAM
+    region: frankfurt
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+
+  # ── PostgreSQL ────────────────────────────────────────────
+  - name: mouride-db
+    plan: free               # Gratuit : 1 GB stockage, expire après 30 jours
+    region: frankfurt
+    postgresMajorVersion: 15
+    databaseName: mouride
+    user: mouride

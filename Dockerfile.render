@@ -1,0 +1,37 @@
+# Dockerfile optimisé pour Render.com (plan gratuit — 512 MB RAM)
+# ── Stage 1 : Build Maven ─────────────────────────────────
+FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+WORKDIR /app
+
+# Télécharger les dépendances en cache séparé (optimise les rebuilds)
+COPY pom.xml .
+RUN mvn dependency:go-offline -q --no-transfer-progress
+
+# Compiler le projet
+COPY src ./src
+RUN mvn package -DskipTests -q --no-transfer-progress
+
+# ── Stage 2 : Runtime léger ───────────────────────────────
+FROM eclipse-temurin:17-jre-alpine
+
+# Utilisateur non-root pour la sécurité
+RUN addgroup -S mouride && adduser -S mouride -G mouride
+
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+
+# Changer le propriétaire
+RUN chown mouride:mouride app.jar
+USER mouride
+
+# Port exposé (Render injecte la variable PORT)
+EXPOSE 8080
+
+# Options JVM optimisées pour conteneur 512 MB
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=70.0", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "-Xss256k", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]
