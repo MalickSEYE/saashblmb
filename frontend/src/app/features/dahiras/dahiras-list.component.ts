@@ -1,72 +1,65 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApiService } from '../../core/services/services';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-dahiras',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-header">
-        <div><h1>🕌 Dahiras</h1><span class="subtitle">{{ dahiras.length }} dahira(s) actif(s)</span></div>
-        <button class="btn-primary" (click)="showForm = !showForm">➕ Nouveau Dahira</button>
+        <div>
+          <h1>🕌 Dahiras</h1>
+          <span class="subtitle">{{ dahiras.length }} Dahira(s) actif(s)</span>
+        </div>
+        <a routerLink="/dahiras/nouveau" class="btn-primary">➕ Nouveau Dahira</a>
       </div>
 
-      <!-- Formulaire création rapide -->
-      <div class="form-card" *ngIf="showForm">
-        <h3>Créer un Dahira</h3>
-        <div class="form-grid">
-          <div class="field"><label>Nom *</label>
-            <input [(ngModel)]="newDahira.nom" placeholder="Ex: Dahira Matlaboul Fawzaini" /></div>
-          <div class="field"><label>Ville</label>
-            <input [(ngModel)]="newDahira.ville" placeholder="Dakar" /></div>
-          <div class="field"><label>Pays</label>
-            <input [(ngModel)]="newDahira.pays" placeholder="Sénégal" /></div>
-          <div class="field"><label>Téléphone</label>
-            <input [(ngModel)]="newDahira.telephone" placeholder="+221 77..." /></div>
-          <div class="field full"><label>Description</label>
-            <input [(ngModel)]="newDahira.description" placeholder="Description du Dahira" /></div>
-        </div>
-        <div class="form-actions">
-          <button class="btn-ghost" (click)="showForm = false">Annuler</button>
-          <button class="btn-primary" (click)="creer()" [disabled]="!newDahira.nom">💾 Créer</button>
-        </div>
-      </div>
+      <div *ngIf="loading" class="loading">Chargement des Dahiras...</div>
 
-      <!-- Grille des Dahiras -->
-      <div *ngIf="loading" class="loading">Chargement...</div>
       <div class="dahiras-grid" *ngIf="!loading">
         <div class="dahira-card" *ngFor="let d of dahiras">
           <div class="card-header">
             <span class="card-icon">🕌</span>
-            <span class="card-code">{{ d.code }}</span>
+            <span class="card-code" *ngIf="d.code">{{ d.code }}</span>
           </div>
           <h3>{{ d.nom }}</h3>
           <div class="card-meta">
-            <span>📍 {{ d.ville || '—' }}, {{ d.pays }}</span>
+            <span *ngIf="d.ville">📍 {{ d.ville }}, {{ d.pays }}</span>
+            <span *ngIf="!d.ville">📍 {{ d.pays }}</span>
           </div>
+          <p class="card-desc" *ngIf="d.description">{{ d.description | slice:0:100 }}</p>
           <div class="card-stats">
-            <div class="cs"><span class="csn">{{ d.nombreMembres }}</span><span class="csl">Membres</span></div>
-            <div class="cs"><span class="csn">{{ (d.totalCotisations | number:'1.0-0') || '0' }}</span><span class="csl">FCFA</span></div>
+            <div class="cs">
+              <span class="csn">{{ d.nombreMembres || 0 }}</span>
+              <span class="csl">Membres</span>
+            </div>
+            <div class="cs">
+              <span class="csn">{{ (d.totalCotisations || 0) | number:'1.0-0' }}</span>
+              <span class="csl">FCFA</span>
+            </div>
           </div>
           <div class="card-actions">
             <a [routerLink]="['/membres']" [queryParams]="{dahiraId: d.id}" class="btn-sm btn-view">
               👥 Membres
             </a>
-            <button class="btn-sm btn-edit" (click)="selectionner(d)">✏️ Modifier</button>
+            <a [routerLink]="['/dahiras', d.id, 'edit']" class="btn-sm btn-edit">✏️ Modifier</a>
+            <button class="btn-sm btn-danger" (click)="supprimer(d)">🗑</button>
           </div>
         </div>
 
-        <!-- Carte vide si aucun dahira -->
         <div class="empty-card" *ngIf="dahiras.length === 0">
           <div class="empty-icon">🕌</div>
           <p>Aucun Dahira créé.</p>
-          <button class="btn-primary" (click)="showForm = true">Créer le premier Dahira</button>
+          <a routerLink="/dahiras/nouveau" class="btn-primary">Créer le premier Dahira</a>
         </div>
       </div>
+
+      <!-- Toast -->
+      <div class="toast" [class.show]="toastMsg">{{ toastMsg }}</div>
     </div>
   `,
   styles: [`
@@ -76,71 +69,69 @@ import { ApiService } from '../../core/services/services';
     h1 { font-size: 1.6rem; font-weight: 700; color: #1A4731; margin: 0; }
     .subtitle { color: #888; font-size: 0.9rem; }
     .btn-primary { padding: 0.6rem 1.25rem; background: #1A4731; color: #F0C96B;
-                   border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.88rem; }
-    .btn-ghost { padding: 0.6rem 1.25rem; background: #eee; color: #333;
-                 border: none; border-radius: 8px; cursor: pointer; }
-    .form-card { background: white; border-radius: 16px; padding: 1.5rem;
-                 box-shadow: 0 2px 16px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
-    .form-card h3 { font-size: 1rem; font-weight: 700; color: #1A4731;
-                    margin-bottom: 1rem; border-bottom: 2px solid #FDF3DC; padding-bottom: 0.5rem; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .field { display: flex; flex-direction: column; gap: 0.3rem; }
-    .field.full { grid-column: 1 / -1; }
-    label { font-size: 0.78rem; font-weight: 600; color: #666; text-transform: uppercase; }
-    input { padding: 0.55rem 0.85rem; border: 1.5px solid #e0e0e0; border-radius: 8px;
-            font-size: 0.9rem; outline: none; }
-    input:focus { border-color: #C8952A; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
-    .dahiras-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+                   border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+                   text-decoration: none; font-size: 0.88rem; display: inline-block; }
+    .dahiras-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
     .dahira-card { background: white; border-radius: 16px; padding: 1.5rem;
                    box-shadow: 0 2px 16px rgba(0,0,0,0.08); border-top: 4px solid #C8952A;
-                   transition: transform 0.2s, box-shadow 0.2s; }
-    .dahira-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+                   transition: transform 0.2s; }
+    .dahira-card:hover { transform: translateY(-3px); }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
     .card-icon { font-size: 1.5rem; }
     .card-code { background: #FDF3DC; color: #8B6914; font-size: 0.72rem;
                  font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
-    h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin-bottom: 0.5rem; }
-    .card-meta { color: #888; font-size: 0.82rem; margin-bottom: 1rem; }
+    h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin-bottom: 0.4rem; }
+    .card-meta { color: #888; font-size: 0.82rem; margin-bottom: 0.5rem; }
+    .card-desc { font-size: 0.82rem; color: #666; margin-bottom: 1rem; font-style: italic; }
     .card-stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; padding: 0.75rem;
                   background: #F5F2EC; border-radius: 8px; }
     .cs { text-align: center; flex: 1; }
     .csn { display: block; font-size: 1.2rem; font-weight: 700; color: #1A4731; }
     .csl { display: block; font-size: 0.72rem; color: #888; }
-    .card-actions { display: flex; gap: 0.5rem; }
+    .card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .btn-sm { padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.82rem;
               cursor: pointer; border: none; text-decoration: none; }
-    .btn-view { background: #e8f4ea; color: #1A4731; }
-    .btn-edit { background: #FDF3DC; color: #8B6914; }
-    .loading { padding: 3rem; text-align: center; color: #888; }
-    .empty-card { background: white; border-radius: 16px; padding: 3rem;
-                  text-align: center; color: #aaa; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+    .btn-view   { background: #e8f4ea; color: #1A4731; }
+    .btn-edit   { background: #FDF3DC; color: #8B6914; }
+    .btn-danger { background: #fdecea; color: #c0392b; }
+    .btn-danger:hover { background: #c0392b; color: white; }
+    .empty-card { background: white; border-radius: 16px; padding: 3rem; text-align: center;
+                  color: #aaa; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
     .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-card p { margin-bottom: 1rem; }
+    .loading { padding: 3rem; text-align: center; color: #888; }
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: #1A4731; color: white;
+             padding: 0.85rem 1.5rem; border-radius: 10px; font-size: 0.88rem;
+             transform: translateY(120%); transition: transform 0.3s; z-index: 300; }
+    .toast.show { transform: translateY(0); }
   `]
 })
 export class DahirasListComponent implements OnInit {
-  private api = inject(ApiService);
+  private http = inject(HttpClient);
   dahiras: any[] = [];
   loading = true;
-  showForm = false;
-  newDahira: any = { nom: '', ville: '', pays: 'Sénégal', telephone: '', description: '' };
+  toastMsg = '';
 
   ngOnInit(): void { this.charger(); }
 
   charger(): void {
     this.loading = true;
-    this.api.getDahiras().subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/dahiras`).subscribe({
       next: d => { this.dahiras = d; this.loading = false; },
       error: () => this.loading = false
     });
   }
 
-  creer(): void {
-    this.api.createDahira(this.newDahira).subscribe({
-      next: () => { this.showForm = false; this.newDahira = { nom:'',ville:'',pays:'Sénégal' }; this.charger(); },
-      error: err => alert('Erreur: ' + (err.error?.detail || 'Création impossible'))
+  supprimer(d: any): void {
+    if (!confirm(`Supprimer le Dahira "${d.nom}" ?`)) return;
+    this.http.delete(`${environment.apiUrl}/dahiras/${d.id}`).subscribe({
+      next: () => { this.showToast('🗑 Dahira supprimé'); this.charger(); },
+      error: () => this.showToast('❌ Erreur lors de la suppression')
     });
   }
 
-  selectionner(d: any): void { alert('Modifier le Dahira "' + d.nom + '" — à implémenter'); }
+  showToast(msg: string): void {
+    this.toastMsg = msg;
+    setTimeout(() => this.toastMsg = '', 3000);
+  }
 }
