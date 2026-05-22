@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -240,17 +240,29 @@ export class MembreFormComponent implements OnInit {
     if (!payload.dateNaissance) delete (payload as any).dateNaissance;
     if (!payload.sexe) delete (payload as any).sexe;
 
+    const token = localStorage.getItem('access_token');
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    });
+
     const req = this.isEdit
-      ? this.http.put(`${this.api}/membres/${this.membreId}`, payload)
-      : this.http.post(`${this.api}/membres`, payload);
+      ? this.http.put(`${this.api}/membres/${this.membreId}`, payload, { headers })
+      : this.http.post(`${this.api}/membres`, payload, { headers });
 
     req.subscribe({
       next: () => {
         this.successMsg = this.isEdit ? '✅ Membre modifié !' : '✅ Membre créé avec succès !';
+        this.saving = false;
         setTimeout(() => this.router.navigate(['/membres']), 1500);
       },
       error: err => {
-        this.errorMsg = err.error?.detail || err.error?.message || 'Erreur lors de l\'enregistrement';
+        console.error('Erreur:', err);
+        if (err.status === 401 || err.status === 403) {
+          this.errorMsg = 'Session expirée. Veuillez vous reconnecter.';
+        } else {
+          this.errorMsg = err.error?.detail || err.error?.message || `Erreur ${err.status}`;
+        }
         this.saving = false;
       }
     });

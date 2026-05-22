@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -14,7 +14,7 @@ import { environment } from '../../../environments/environment';
       <div class="page-header">
         <div>
           <h1>{{ isEdit ? '✏️ Modifier le Dahira' : '➕ Nouveau Dahira' }}</h1>
-          <span class="subtitle">{{ isEdit ? 'Modifier les informations du Dahira' : 'Créer un nouveau Dahira' }}</span>
+          <span class="subtitle">{{ isEdit ? 'Modifier les informations' : 'Créer un nouveau Dahira' }}</span>
         </div>
         <a routerLink="/dahiras" class="btn-ghost">← Retour</a>
       </div>
@@ -51,7 +51,7 @@ import { environment } from '../../../environments/environment';
           <div class="form-grid">
             <div class="field full">
               <label>Adresse</label>
-              <input formControlName="adresse" placeholder="Adresse complète du Dahira" />
+              <input formControlName="adresse" placeholder="Adresse complète" />
             </div>
             <div class="field">
               <label>Ville</label>
@@ -70,13 +70,13 @@ import { environment } from '../../../environments/environment';
                       placeholder="Décrivez les activités et la mission du Dahira..."></textarea>
           </div>
 
-          <div class="alert-error"   *ngIf="errorMsg">{{ errorMsg }}</div>
+          <div class="alert-error"   *ngIf="errorMsg">⚠️ {{ errorMsg }}</div>
           <div class="alert-success" *ngIf="successMsg">{{ successMsg }}</div>
 
           <div class="form-actions">
             <a routerLink="/dahiras" class="btn-ghost">Annuler</a>
             <button type="submit" class="btn-primary" [disabled]="saving || form.invalid">
-              {{ saving ? '⏳...' : (isEdit ? '💾 Modifier' : '💾 Créer le Dahira') }}
+              {{ saving ? '⏳ Enregistrement...' : (isEdit ? '💾 Modifier' : '💾 Créer le Dahira') }}
             </button>
           </div>
         </form>
@@ -108,9 +108,12 @@ import { environment } from '../../../environments/environment';
     input:focus, textarea:focus { border-color: #C8952A; }
     textarea { resize: vertical; }
     .err { color: #e74c3c; font-size: 0.78rem; }
-    .alert-error   { background: #fdecea; border: 1px solid #f5c6c2; color: #c0392b; border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; }
-    .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #1A4731; border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f0ebe2; }
+    .alert-error   { background: #fdecea; border: 1px solid #f5c6c2; color: #c0392b;
+                     border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.88rem; }
+    .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #1A4731;
+                     border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.88rem; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 2rem;
+                    padding-top: 1.5rem; border-top: 1px solid #f0ebe2; }
     @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
   `]
 })
@@ -154,20 +157,50 @@ export class DahiraFormComponent implements OnInit {
     if (this.form.invalid) return;
     this.saving = true;
     this.errorMsg = '';
-    const payload = { ...this.form.value };
-    if (!payload.dateCreation) delete (payload as any).dateCreation;
 
+    // Construire le payload proprement
+    const raw = this.form.value;
+    const payload: any = {
+      nom:         raw.nom,
+      pays:        raw.pays || 'Sénégal',
+    };
+    if (raw.code)          payload.code          = raw.code;
+    if (raw.telephone)     payload.telephone     = raw.telephone;
+    if (raw.email)         payload.email         = raw.email;
+    if (raw.dateCreation)  payload.dateCreation  = raw.dateCreation;
+    if (raw.adresse)       payload.adresse       = raw.adresse;
+    if (raw.ville)         payload.ville         = raw.ville;
+    if (raw.description)   payload.description   = raw.description;
+
+    // Récupérer le token depuis localStorage directement
+    const token = localStorage.getItem('access_token');
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    });
+
+    const url = this.isEdit
+      ? `${this.api}/dahiras/${this.dahiraId}`
+      : `${this.api}/dahiras`;
     const req = this.isEdit
-      ? this.http.put(`${this.api}/dahiras/${this.dahiraId}`, payload)
-      : this.http.post(`${this.api}/dahiras`, payload);
+      ? this.http.put(url, payload, { headers })
+      : this.http.post(url, payload, { headers });
 
     req.subscribe({
       next: () => {
         this.successMsg = this.isEdit ? '✅ Dahira modifié !' : '✅ Dahira créé avec succès !';
+        this.saving = false;
         setTimeout(() => this.router.navigate(['/dahiras']), 1500);
       },
       error: err => {
-        this.errorMsg = err.error?.detail || err.error?.message || 'Erreur lors de l\'enregistrement';
+        console.error('Erreur création Dahira:', err);
+        if (err.status === 401 || err.status === 403) {
+          this.errorMsg = 'Session expirée. Veuillez vous reconnecter.';
+        } else if (err.status === 400) {
+          this.errorMsg = err.error?.detail || err.error?.message || 'Données invalides';
+        } else {
+          this.errorMsg = `Erreur ${err.status}: ${err.error?.detail || err.error?.message || 'Erreur serveur'}`;
+        }
         this.saving = false;
       }
     });
