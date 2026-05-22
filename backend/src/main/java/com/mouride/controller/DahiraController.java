@@ -55,6 +55,14 @@ public class DahiraController {
         return ResponseEntity.ok(dahiraService.modifier(id, request));
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @Operation(summary = "Désactiver un Dahira")
+    public ResponseEntity<Void> supprimer(@PathVariable UUID id) {
+        dahiraService.desactiver(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/membres")
     @Operation(summary = "Membres du Dahira")
     public ResponseEntity<Page<Membre>> membres(@PathVariable UUID id,

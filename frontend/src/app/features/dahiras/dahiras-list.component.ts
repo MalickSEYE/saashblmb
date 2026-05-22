@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -18,7 +18,7 @@ import { environment } from '../../../environments/environment';
         <a routerLink="/dahiras/nouveau" class="btn-primary">➕ Nouveau Dahira</a>
       </div>
 
-      <div *ngIf="loading" class="loading">Chargement des Dahiras...</div>
+      <div *ngIf="loading" class="loading">Chargement...</div>
 
       <div class="dahiras-grid" *ngIf="!loading">
         <div class="dahira-card" *ngFor="let d of dahiras">
@@ -28,8 +28,7 @@ import { environment } from '../../../environments/environment';
           </div>
           <h3>{{ d.nom }}</h3>
           <div class="card-meta">
-            <span *ngIf="d.ville">📍 {{ d.ville }}, {{ d.pays }}</span>
-            <span *ngIf="!d.ville">📍 {{ d.pays }}</span>
+            <span>📍 {{ d.ville ? d.ville + ', ' : '' }}{{ d.pays }}</span>
           </div>
           <p class="card-desc" *ngIf="d.description">{{ d.description | slice:0:100 }}</p>
           <div class="card-stats">
@@ -58,8 +57,9 @@ import { environment } from '../../../environments/environment';
         </div>
       </div>
 
-      <!-- Toast -->
-      <div class="toast" [class.show]="toastMsg">{{ toastMsg }}</div>
+      <div class="toast" [class.show]="toastMsg" [class.error]="toastError">
+        {{ toastMsg }}
+      </div>
     </div>
   `,
   styles: [`
@@ -78,32 +78,29 @@ import { environment } from '../../../environments/environment';
     .dahira-card:hover { transform: translateY(-3px); }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
     .card-icon { font-size: 1.5rem; }
-    .card-code { background: #FDF3DC; color: #8B6914; font-size: 0.72rem;
-                 font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
+    .card-code { background: #FDF3DC; color: #8B6914; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
     h3 { font-size: 1rem; font-weight: 700; color: #1A4731; margin-bottom: 0.4rem; }
     .card-meta { color: #888; font-size: 0.82rem; margin-bottom: 0.5rem; }
     .card-desc { font-size: 0.82rem; color: #666; margin-bottom: 1rem; font-style: italic; }
-    .card-stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; padding: 0.75rem;
-                  background: #F5F2EC; border-radius: 8px; }
+    .card-stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; padding: 0.75rem; background: #F5F2EC; border-radius: 8px; }
     .cs { text-align: center; flex: 1; }
     .csn { display: block; font-size: 1.2rem; font-weight: 700; color: #1A4731; }
     .csl { display: block; font-size: 0.72rem; color: #888; }
     .card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .btn-sm { padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.82rem;
-              cursor: pointer; border: none; text-decoration: none; }
+    .btn-sm { padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; border: none; text-decoration: none; }
     .btn-view   { background: #e8f4ea; color: #1A4731; }
     .btn-edit   { background: #FDF3DC; color: #8B6914; }
     .btn-danger { background: #fdecea; color: #c0392b; }
     .btn-danger:hover { background: #c0392b; color: white; }
-    .empty-card { background: white; border-radius: 16px; padding: 3rem; text-align: center;
-                  color: #aaa; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+    .empty-card { background: white; border-radius: 16px; padding: 3rem; text-align: center; color: #aaa; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
     .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
     .empty-card p { margin-bottom: 1rem; }
     .loading { padding: 3rem; text-align: center; color: #888; }
     .toast { position: fixed; bottom: 2rem; right: 2rem; background: #1A4731; color: white;
              padding: 0.85rem 1.5rem; border-radius: 10px; font-size: 0.88rem;
              transform: translateY(120%); transition: transform 0.3s; z-index: 300; }
-    .toast.show { transform: translateY(0); }
+    .toast.show  { transform: translateY(0); }
+    .toast.error { background: #c0392b; }
   `]
 })
 export class DahirasListComponent implements OnInit {
@@ -111,6 +108,15 @@ export class DahirasListComponent implements OnInit {
   dahiras: any[] = [];
   loading = true;
   toastMsg = '';
+  toastError = false;
+
+  private get headers(): HttpHeaders {
+    const token = localStorage.getItem('access_token');
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    });
+  }
 
   ngOnInit(): void { this.charger(); }
 
@@ -124,14 +130,18 @@ export class DahirasListComponent implements OnInit {
 
   supprimer(d: any): void {
     if (!confirm(`Supprimer le Dahira "${d.nom}" ?`)) return;
-    this.http.delete(`${environment.apiUrl}/dahiras/${d.id}`).subscribe({
-      next: () => { this.showToast('🗑 Dahira supprimé'); this.charger(); },
-      error: () => this.showToast('❌ Erreur lors de la suppression')
+    this.http.delete(`${environment.apiUrl}/dahiras/${d.id}`, { headers: this.headers }).subscribe({
+      next: () => { this.showToast('✅ Dahira supprimé', false); this.charger(); },
+      error: err => {
+        const msg = err.status === 403 ? 'Non autorisé' : `Erreur ${err.status}`;
+        this.showToast(`❌ ${msg}`, true);
+      }
     });
   }
 
-  showToast(msg: string): void {
+  showToast(msg: string, error = false): void {
     this.toastMsg = msg;
-    setTimeout(() => this.toastMsg = '', 3000);
+    this.toastError = error;
+    setTimeout(() => { this.toastMsg = ''; this.toastError = false; }, 3000);
   }
 }
